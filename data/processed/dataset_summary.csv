@@ -1,0 +1,9 @@
+dataset,original_rows,cleaned_rows,original_columns,cleaned_columns,duplicates_removed,missing_values
+RA2019_A1.csv,30,30,16,16,0,13
+RA2019_A2.csv,37,37,21,21,0,7
+RA2019_A47.csv,51,51,33,33,0,2
+RA2019_A48.csv,51,51,43,43,0,2
+RA2019_A49.csv,51,51,38,38,0,2
+RA2019_A50.csv,51,51,38,38,0,2
+RA2019_A51.csv,37,37,2,2,0,6
+RA2019_A52.csv,273,273,15,15,0,77

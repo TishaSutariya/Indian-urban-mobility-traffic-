@@ -1,0 +1,12 @@
+INDIAN TRAFFIC DATA SOURCES
+============================
+
+state_accidents
+https://www.data.gov.in/resource/stateut-wise-total-number-road-accidents-india-2016-2019
+
+collision
+https://punjab.data.gov.in/resource/stateut-wise-accidents-classified-according-type-collision-during-2019
+
+weather
+https://up.data.gov.in/resource/stateut-wise-accidents-classified-according-type-weather-condition-during-2019
+
