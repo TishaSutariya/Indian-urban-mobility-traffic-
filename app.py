@@ -1216,30 +1216,59 @@ elif page == "🚦 Traffic Control":
 
     location_col = a50.columns[0]
 
+    # A50 column names can vary slightly between cleaned/source versions.
+    # This flexible matcher handles differences in spaces, hyphens and slashes.
+    def find_accident_column(df, keywords):
+        if df.empty:
+            return None
+
+        normalized = {}
+
+        for col in df.columns:
+            col_text = (
+                str(col)
+                .lower()
+                .replace("-", " ")
+                .replace("/", " ")
+                .replace("_", " ")
+            )
+            normalized[col] = " ".join(col_text.split())
+
+        # Prefer columns that contain "accident" and all requested keywords.
+        for col, col_text in normalized.items():
+            if "accident" not in col_text:
+                continue
+
+            if all(keyword.lower() in col_text for keyword in keywords):
+                return col
+
+        # Fallback for unusual wording.
+        for col, col_text in normalized.items():
+            if "accident" in col_text and any(
+                keyword.lower() in col_text for keyword in keywords
+            ):
+                return col
+
+        return None
+
     control_columns = {
-        "Traffic Light Signal": find_column(
-            a50,
-            ["traffic light signal - number of accidents"]
+        "Traffic Light Signal": find_accident_column(
+            a50, ["traffic", "light"]
         ),
-        "Police Controlled": find_column(
-            a50,
-            ["police controlled - number of accidents"]
+        "Police Controlled": find_accident_column(
+            a50, ["police", "controlled"]
         ),
-        "Stop Sign": find_column(
-            a50,
-            ["stop sign - number of accidents"]
+        "Stop Sign": find_accident_column(
+            a50, ["stop", "sign"]
         ),
-        "Flashing Signal / Blinker": find_column(
-            a50,
-            ["flashing signal/blinker - number of accidents"]
+        "Flashing Signal / Blinker": find_accident_column(
+            a50, ["flashing", "signal"]
         ),
-        "Uncontrolled": find_column(
-            a50,
-            ["uncontrolled - number of accidents"]
+        "Uncontrolled": find_accident_column(
+            a50, ["uncontrolled"]
         ),
-        "Others": find_column(
-            a50,
-            ["others - number of accidents"]
+        "Others": find_accident_column(
+            a50, ["others"]
         )
     }
 
@@ -1252,23 +1281,34 @@ elif page == "🚦 Traffic Control":
 
     for category, column in control_columns.items():
 
-        if column:
+        if column is not None:
 
-            value = to_numeric(
+            values = to_numeric(
                 clean[column]
-            ).sum()
+            )
 
             totals.append({
                 "Traffic Control": category,
-                "Reported Accidents": value
+                "Reported Accidents": values.sum()
             })
 
     control_df = pd.DataFrame(totals)
 
+    if control_df.empty:
+        st.error(
+            "Traffic-control accident columns could not be identified "
+            "in the A50 dataset."
+        )
+        st.write("Available A50 columns:", a50.columns.tolist())
+        st.stop()
+
+    control_df = control_df.sort_values(
+        "Reported Accidents",
+        ascending=True
+    )
+
     fig = px.bar(
-        control_df.sort_values(
-            "Reported Accidents"
-        ),
+        control_df,
         x="Reported Accidents",
         y="Traffic Control",
         orientation="h",
@@ -1291,6 +1331,7 @@ elif page == "🚦 Traffic Control":
         use_container_width=True
     )
 
+
 # ============================================================
 # 7. JUNCTION ANALYSIS
 # ============================================================
@@ -1309,30 +1350,65 @@ elif page == "🔀 Junction Analysis":
 
     location_col = a49.columns[0]
 
+    # A49 headers can vary slightly in punctuation/capitalization.
+    # Normalize them before matching the accident-count columns.
+    def find_junction_accident_column(df, keywords):
+
+        def normalize(text):
+            return "".join(
+                ch.lower()
+                for ch in str(text)
+                if ch.isalnum()
+            )
+
+        normalized_keywords = [normalize(k) for k in keywords]
+
+        # First: require both "accident" and all junction keywords.
+        for col in df.columns:
+            col_norm = normalize(col)
+
+            if "accident" in col_norm and all(
+                keyword in col_norm
+                for keyword in normalized_keywords
+            ):
+                return col
+
+        # Fallback: require "accident" and at least one keyword.
+        for col in df.columns:
+            col_norm = normalize(col)
+
+            if "accident" in col_norm and any(
+                keyword in col_norm
+                for keyword in normalized_keywords
+            ):
+                return col
+
+        return None
+
     junction_columns = {
-        "T-Junction": find_column(
+        "T-Junction": find_junction_accident_column(
             a49,
-            ["t-junction - number of accidents"]
+            ["t-junction"]
         ),
-        "Y-Junction": find_column(
+        "Y-Junction": find_junction_accident_column(
             a49,
-            ["y-junction - number of accidents"]
+            ["y-junction"]
         ),
-        "Four-arm Junction": find_column(
+        "Four-arm Junction": find_junction_accident_column(
             a49,
-            ["four-arm junction - number of accidents"]
+            ["four-arm"]
         ),
-        "Staggered Junction": find_column(
+        "Staggered Junction": find_junction_accident_column(
             a49,
-            ["staggered junction - number of accidents"]
+            ["staggered"]
         ),
-        "Roundabout": find_column(
+        "Roundabout": find_junction_accident_column(
             a49,
-            ["roundabout - number of accidents"]
+            ["roundabout"]
         ),
-        "Others": find_column(
+        "Others": find_junction_accident_column(
             a49,
-            ["others - number of accidents"]
+            ["others"]
         )
     }
 
@@ -1357,6 +1433,12 @@ elif page == "🔀 Junction Analysis":
             })
 
     junction_df = pd.DataFrame(totals)
+
+    # Prevent the same KeyError if an A49 file with unexpected headers is used.
+    if junction_df.empty or "Reported Accidents" not in junction_df.columns:
+        st.error("Could not identify the A49 junction accident-count columns.")
+        st.write("Available A49 columns:", a49.columns.tolist())
+        st.stop()
 
     fig = px.bar(
         junction_df.sort_values(
